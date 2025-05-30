@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Crisis Control Game</title>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            databaseURL: "https://incident-c4db3-default-rtdb.firebaseio.com/"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const scoresRef = ref(db, "crisis_control_scores");
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const form = document.getElementById("gameForm");
+            form.addEventListener("submit", (e) => {
+                e.preventDefault();
+                const team = document.getElementById("teamName").value.trim();
+                if (!team) return alert("Please enter your team name.");
+
+                let safety = 0, cost = 0, time = 0, reputation = 0;
+                const responses = document.querySelectorAll("input[type='radio']:checked");
+                if (responses.length < 6) return alert("Please answer all questions.");
+
+                responses.forEach(input => {
+                    const [s, c, t, r] = input.value.split(",").map(Number);
+                    safety += s; cost += c; time += t; reputation += r;
+                });
+
+                const total = safety + cost + time + reputation;
+                const result = { team, safety, cost, time, reputation, total, timestamp: new Date().toISOString() };
+                push(scoresRef, result);
+
+                alert(`Team ${team}:\nSafety: ${safety}, Cost: ${cost}, Time: ${time}, Reputation: ${reputation}, Total: ${total}`);
+                form.reset();
+            });
+
+            document.getElementById("resetButton").addEventListener("click", () => {
+                const pin = prompt("Enter PIN to reset scores:");
+                if (pin !== "6666") return alert("Incorrect PIN.");
+                if (confirm("Are you sure you want to reset all scores?")) {
+                    remove(scoresRef).then(() => alert("All scores have been reset."));
+                }
+            });
+
+            onValue(scoresRef, (snapshot) => {
+                const dataArray = [];
+                snapshot.forEach(child => {
+                    dataArray.push(child.val());
+                });
+
+                // Sort by total score descending
+                dataArray.sort((a, b) => b.total - a.total);
+
+                // Generate HTML for styled leaderboard
+                let html = "";
+                dataArray.forEach(d => {
+                    html += `
+                        <div class="card">
+                            <h4>${d.team}</h4>
+                            <p>Safety: ${d.safety}</p>
+                            <p>Cost: ${d.cost}</p>
+                            <p>Time: ${d.time}</p>
+                            <p>Reputation: ${d.reputation}</p>
+                            <p><strong>Total: ${d.total}</strong></p>
+                        </div>
+                    `;
+                });
+                document.getElementById("leaderboard").innerHTML = html;
+            });
+        });
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+
+        input[type="text"] {
+            width: 300px;
+            padding: 8px;
+        }
+
+        .question {
+            margin: 20px 0;
+            text-align: left;
+            max-width: 600px;
+            margin-inline: auto;
+        }
+
+        label {
+            display: block;
+            margin: 5px 0;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+        }
+
+        #leaderboard {
+            margin-top: 30px;
+            text-align: center;
+            max-width: 600px;
+            margin-inline: auto;
+        }
+
+        .card {
+            background-color: #f0f0f0;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: left;
+        }
+
+        .card h4 {
+            margin: 0 0 10px;
+        }
+
+        .header-image {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <img src="header-image.jpg" alt="Header Image" class="header-image">
+    <h2>Crisis Control Game</h2>
+
+<div class="footer-text" style="color: blue;">
+    <p>Mohammed Al Balushi, Mech Eng GDP</p>
+</div>
+
+	
+    <form id="gameForm">
+        <label>Team Name:
+            <input type="text" id="teamName" required>
+        </label>
+
+        <div class="question">
+            <h3>1. Pump failure in remote location</h3>
+            <label><input type="radio" name="q1" value="2,-4,3,2" required> Fly in replacement part immediately</label>
+            <label><input type="radio" name="q1" value="-2,2,-2,-1"> Attempt temporary repair on-site</label>
+        </div>
+
+        <div class="question">
+            <h3>2. Imminent storm approaching rig</h3>
+            <label><input type="radio" name="q2" value="4,-2,-2,3" required> Evacuate non-essential crew</label>
+            <label><input type="radio" name="q2" value="-4,2,1,-2"> Secure systems and ride it out</label>
+        </div>
+
+        <div class="question">
+            <h3>3. Minor leak near pipeline joint</h3>
+            <label><input type="radio" name="q3" value="4,-3,-3,2" required> Shut down pipeline for inspection</label>
+            <label><input type="radio" name="q3" value="-2,1,2,-2"> Increase monitoring and defer shut-in</label>
+        </div>
+
+        <div class="question">
+            <h3>4. Subsea equipment failure detected</h3>
+            <label><input type="radio" name="q4" value="3,-3,2,2" required> Deploy ROV team immediately</label>
+            <label><input type="radio" name="q4" value="-3,2,-2,-2"> Wait for next planned inspection</label>
+        </div>
+
+        <div class="question">
+            <h3>5. Cybersecurity breach in control system</h3>
+            <label><input type="radio" name="q5" value="3,-2,-2,2" required> Shut down remote access</label>
+            <label><input type="radio" name="q5" value="-2,2,2,-3"> Monitor breach and continue operation</label>
+        </div>
+
+        <div class="question">
+            <h3>6. Social media footage of flaring goes viral</h3>
+            <label><input type="radio" name="q6" value="0,-1,0,4" required> Issue official response and invite site visit</label>
+            <label><input type="radio" name="q6" value="0,1,1,-4"> Ignore and continue operations</label>
+        </div>
+
+        <button type="submit">Submit Answers</button>
+    </form>
+
+    <button id="resetButton" style="background-color:red;color:white;">Reset Scores</button>
+
+
+    <h3>Leaderboard</h3>
+    <div id="leaderboard"></div>
+	
+</body>
+</html>
